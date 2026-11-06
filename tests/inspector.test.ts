@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { Store } from "../server/store.js";
 import { createOperator } from "../server/auth.js";
 import { VoiceService } from "../server/service.js";
@@ -29,7 +30,11 @@ test(
           mcpServers: {
             voice: {
               command: process.execPath,
-              args: ["--import", "tsx", resolve("server/stdio.ts")],
+              args: [
+                "--import",
+                pathToFileURL(resolve("node_modules/tsx/dist/loader.mjs")).href,
+                resolve("server/stdio.ts"),
+              ],
               env: {
                 VOICE_DATA_DIR: store.dir,
                 VOICE_OPERATOR_ID: owner,

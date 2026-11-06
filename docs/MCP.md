@@ -3,7 +3,7 @@
 ## Local stdio (development)
 
 1. Run the app and create the owner account. Copy the operator ID from **MCP connection**.
-2. Copy `codex/mcp.local.example.json` into your client's MCP configuration, replacing the absolute project path and operator ID. Use the client's current settings location, not a guessed global filename. On Windows, JSON paths need escaped backslashes or forward slashes.
+2. Copy `codex/mcp.local.example.json` into your client's MCP configuration, replacing the absolute project path and operator ID. Use the client's current settings location, not a guessed global filename. On Windows, JSON paths need escaped backslashes or forward slashes. The `--import` loader uses a **file URL**: for example `file:///C:/Projects/vultrix-voice/node_modules/tsx/dist/loader.mjs` (encode spaces as `%20`); the script/data arguments remain ordinary filesystem paths such as `C:/Projects/vultrix-voice/server/stdio.ts`.
 3. The example is read/prepare/stop only. To test preview and simulated placement, explicitly add `voice:preview calls:place` to `VOICE_MCP_SCOPES`. This still cannot authorize calls.
 4. Keep the UI and worker running. The stdio process accesses the same absolute `VOICE_DATA_DIR`; its security boundary is your trusted OS user, not OAuth. Do not expose stdio through an unauthenticated network bridge.
 
@@ -12,7 +12,7 @@ For Codex clients supporting TOML MCP entries:
 ```toml
 [mcp_servers.vultrix_voice]
 command = "node"
-args = ["--import", "/absolute/project/node_modules/tsx/dist/loader.mjs", "/absolute/project/server/stdio.ts"]
+args = ["--import", "file:///absolute/project/node_modules/tsx/dist/loader.mjs", "/absolute/project/server/stdio.ts"]
 
 [mcp_servers.vultrix_voice.env]
 VOICE_DATA_DIR = "/absolute/project/data"

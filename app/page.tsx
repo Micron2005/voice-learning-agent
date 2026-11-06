@@ -79,14 +79,19 @@ export default function Dashboard() {
         .catch((e) => setError(e.message));
     }
   }, [auth, request]);
-  const act = async (path: string, input: any, success?: string) => {
+  const act = async (
+    path: string,
+    input: any,
+    success?: string | ((result: any) => string),
+  ) => {
     setBusy(true);
     setError("");
     setNotice("");
     try {
       const result = await request(path, input);
       if (path !== "logout") await refresh();
-      if (success) setNotice(success);
+      if (success)
+        setNotice(typeof success === "function" ? success(result) : success);
       return result;
     } catch (e: any) {
       setError(e.message);
@@ -1481,6 +1486,8 @@ function Calls({ state, act, busy }: any) {
     [authorized, setAuthorized] = useState(false),
     [reviewed, setReviewed] = useState(false);
   const [key, setKey] = useState("");
+  const existingCall =
+    draft && state.call.find((c: Row) => c.draftId === draft.id);
   return (
     <>
       <section className="card">
@@ -1643,16 +1650,24 @@ function Calls({ state, act, busy }: any) {
             </button>
             <button
               className="primary"
-              disabled={!authorized || busy}
+              disabled={
+                !authorized ||
+                busy ||
+                !!existingCall ||
+                state.budget[0].killSwitch
+              }
               onClick={() =>
                 act(
                   "call/place",
                   { draftId: draft.id, idempotencyKey: key },
-                  "Simulation queued. No real call was placed.",
+                  (call: Row) =>
+                    `Simulation ${call.state}. No real call was placed.`,
                 )
               }
             >
-              Start authorized simulation
+              {existingCall
+                ? "Simulation already created · see history"
+                : "Start authorized simulation"}
             </button>
           </div>
         </section>

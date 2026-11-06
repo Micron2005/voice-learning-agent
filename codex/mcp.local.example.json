@@ -4,7 +4,7 @@
       "command": "node",
       "args": [
         "--import",
-        "/absolute/project/node_modules/tsx/dist/loader.mjs",
+        "file:///absolute/project/node_modules/tsx/dist/loader.mjs",
         "/absolute/project/server/stdio.ts"
       ],
       "env": {
