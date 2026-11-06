@@ -1,0 +1,48 @@
+{
+  "name": "vultrix-voice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others \"tsx server/main.ts --dev\" \"tsx server/worker.ts\"",
+    "build": "next build",
+    "start": "concurrently --kill-others \"tsx server/main.ts\" \"tsx server/worker.ts\"",
+    "worker": "tsx server/worker.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint app server tests",
+    "test": "tsx --test tests/*.test.ts",
+    "mcp:stdio": "tsx server/stdio.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "concurrently": "9.2.5",
+    "dotenv": "17.2.3",
+    "express": "5.3.0",
+    "express-rate-limit": "8.7.3",
+    "multer": "2.5.0",
+    "next": "16.4.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "tsx": "4.23.15",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@modelcontextprotocol/inspector": "2.14.0",
+    "@types/express": "5.0.6",
+    "@types/multer": "2.0.0",
+    "@types/node": "24.10.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "eslint": "9.39.5",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1"
+  },
+  "overrides": {
+    "minimatch": "11.0.5"
+  }
+}

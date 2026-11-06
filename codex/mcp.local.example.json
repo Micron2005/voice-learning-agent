@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "vultrix_voice": {
+      "command": "node",
+      "args": [
+        "--import",
+        "/absolute/project/node_modules/tsx/dist/loader.mjs",
+        "/absolute/project/server/stdio.ts"
+      ],
+      "env": {
+        "VOICE_DATA_DIR": "/absolute/project/data",
+        "VOICE_OPERATOR_ID": "REPLACE_WITH_LOCAL_OWNER_ID",
+        "VOICE_MCP_SCOPES": "voice:read calls:read calls:prepare calls:stop",
+        "APP_URL": "http://localhost:3410",
+        "DOTENV_CONFIG_QUIET": "true"
+      }
+    }
+  }
+}
