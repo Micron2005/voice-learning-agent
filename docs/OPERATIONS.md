@@ -7,6 +7,7 @@
 - **Mock ready:** the local job completed. It is not trained speech, identity verification or provider model readiness.
 - **Queued/dialing/connected/completed:** explicitly simulated timeline. A real create response would still need provider evidence and must never be called a sales success.
 - **Unknown:** do not redial. Keep one-active-call protection until provider status can be reconciled in the future live runtime.
+- **Twilio connection verified:** read-only account metadata was received, not permission or readiness to dial; paid/inactive accounts are blocked from trial resource inspection and all calls remain simulated.
 
 ## Authorization and stopping
 
@@ -30,6 +31,10 @@ Deleting an original/preview is irreversible in the local active store and inval
 | Same-origin/CSRF error | Open exact `APP_URL`; sign in again; change both PORT and APP_URL together. |
 | Private preview link expired | Inspect preview again to obtain a fresh, two-minute bearer audio link. Do not share it publicly. |
 | Read-only provider inspection unavailable | No keys are required for dry run. Optional inspection needs the three server-side ElevenLabs values; it cannot enable calling or prove subscription eligibility. |
+| Twilio server credentials missing | Set `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` in the private server environment, restart, then reload Phone setup; never enter keys into chat or the dashboard. |
+| Twilio lists are empty | New trial resources may be managed separately by Try out Voice; check that screen and its free-units tracker without upgrading or purchasing anything. Do not assume verification failed or that credits exist. |
+| Twilio paid/inactive account | Only an active Trial account is eligible for this zero-spend setup path; connection success does not authorize use of a paid account. |
+| Twilio check failed | Prior results are cleared; check network, server credentials and provider permissions, then retry manually. Nothing is automatically retried or dialed. |
 | OAuth request/code expired | Restart connection and inspect scopes again. Access tokens expire after one hour; reconnect. Revoke all current tokens from the MCP page if a client is no longer trusted. |
 | Call blocked | Check kill switch, permission purpose/revocation, suppression, approved simulation version, exact grant expiry, and another active/unknown simulation. |
 | Forgotten owner password | No self-service reset is implemented. Do not delete an existing data directory to bypass controls. A maintainer must perform a reviewed, backed-up account recovery and revoke sessions/tokens. |

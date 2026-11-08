@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Audition } from "./audition";
+import { TwilioSetup } from "./twilio";
 
 type Row = { id: string; [key: string]: any };
 const sections = [
@@ -9,10 +10,11 @@ const sections = [
   "Quality lab",
   "Agent knowledge",
   "Permissions",
+  "Phone setup",
   "Calls",
   "MCP connection",
 ];
-const icons = ["◈", "◉", "≋", "▤", "◇", "↗", "⌘"];
+const icons = ["◈", "◉", "≋", "▤", "◇", "⊕", "↗", "⌘"];
 const money = (n: number) => `$${(n / 100).toFixed(2)}`;
 const short = (id: string) => id?.slice(0, 8);
 
@@ -457,6 +459,9 @@ export default function Dashboard() {
                   <button onClick={() => setTab("MCP connection")}>
                     Review connection & activation →
                   </button>
+                  <button onClick={() => setTab("Phone setup")}>
+                    Set up Twilio →
+                  </button>
                 </section>
               </div>
             </>
@@ -476,6 +481,7 @@ export default function Dashboard() {
           )}
           {tab === "Agent knowledge" && <Knowledge state={state} act={act} />}
           {tab === "Permissions" && <Permissions state={state} act={act} />}
+          {tab === "Phone setup" && <TwilioSetup request={request} />}
           {tab === "Calls" && <Calls state={state} act={act} busy={busy} />}
           {tab === "MCP connection" && (
             <section className="card">
