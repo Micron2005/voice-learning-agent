@@ -49,6 +49,14 @@ If the port changes, change **both** `PORT` and `APP_URL` in `.env`. Use the exa
 8. Test the simulated refusal/keypad opt-out and global Stop all. Refusal suppresses that destination; no automatic redial is implemented. Clear the kill switch deliberately before further work.
 9. MCP connection: inspect endpoint, scopes, local owner ID and blockers. Connect a local MCP client as below.
 
+## Twilio connection inside the app
+
+Open **Phone setup** to check Twilio without leaving the workspace. Configure `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` only in the server's private environment (or the ignored local `.env`), then restart the app. Credentials saved in Devin do not automatically configure another computer or host. Never put them in browser code, `NEXT_PUBLIC_` values, chat, MCP configuration or Git.
+
+**Check Twilio connection** performs read-only requests for account type/status and the first 50 entries from each standard phone-number/caller-ID API. It displays only masked numbers. Only the server's primary owner can inspect these global credentials; checks are manual, not background polling. Results are not persisted or included in MCP tools.
+
+Active Trial means the account type/status was verified, **not** that free quota, caller ownership, recipient consent or a live call was authorized. Newer Twilio trials may expose resources only in **Try out Voice**, so empty standard API lists do not prove that the signup phone is unverified. Remaining free minutes and account-specific trial limitations still need confirmation in Twilio's Voice free-units tracker. The app cannot initiate phone verification, buy a number, upgrade an account or place a real call. No paid plan, hosting or credentials are required to keep using the dry run.
+
 ## MCP connection
 
 See [the complete ChatGPT/Codex guide](docs/MCP.md) and [local example configuration](codex/mcp.local.example.json). This server uses the official MCP SDK, Streamable HTTP plus OAuth 2.1/S256 PKCE, and a trusted-local stdio entry point. There is no tool that can create operator authorization grants.

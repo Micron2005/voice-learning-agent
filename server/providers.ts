@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
 import { Fault, requireThat, Store } from "./store.js";
 
 export interface LivePermit {
@@ -277,31 +278,130 @@ export class TwilioAdapter {
     private authToken: string,
     private send: Fetch = fetch,
   ) {}
-  private async request(path: string, init: RequestInit = {}) {
+  private async request(path: string, init: RequestInit = {}, query = "") {
     requireThat(
       /^AC[a-fA-F0-9]{32}$/.test(this.accountSid) && this.authToken,
       "twilio_key",
       "Server-side Twilio credentials required.",
     );
-    const res = await this.send(
-      `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/${path}.json`,
-      {
-        ...init,
-        redirect: "error",
-        signal: AbortSignal.timeout(15_000),
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64")}`,
-          ...init.headers,
+    let res: globalThis.Response;
+    try {
+      res = await this.send(
+        `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}${path ? `/${path}` : ""}.json${query}`,
+        {
+          ...init,
+          redirect: "error",
+          signal: AbortSignal.timeout(15_000),
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64")}`,
+            ...init.headers,
+          },
         },
-      },
-    );
+      );
+    } catch {
+      throw new Fault(
+        init.method === "POST" ? "provider_unknown" : "twilio_unavailable",
+        init.method === "POST"
+          ? "Twilio response uncertain. Inspect the provider call state before retrying."
+          : "Twilio could not be reached. Check the connection and retry this read-only inspection.",
+        503,
+      );
+    }
     requireThat(
       res.ok,
       "twilio_error",
-      `Twilio returned HTTP ${res.status}. Inspect account permissions and call state.`,
+      `Twilio returned HTTP ${res.status}. Check server credentials and account permissions. No raw provider response is exposed.`,
       502,
     );
-    return res.json();
+    try {
+      return await res.json();
+    } catch {
+      throw new Fault(
+        "twilio_response",
+        "Twilio returned an unreadable response.",
+        502,
+      );
+    }
+  }
+  async inspectSetup() {
+    const account = z
+      .object({
+        sid: z.literal(this.accountSid),
+        type: z.enum(["Trial", "Full"]),
+        status: z.enum(["active", "suspended", "closed"]),
+      })
+      .safeParse(await this.request(""));
+    requireThat(
+      account.success,
+      "twilio_response",
+      "Twilio account metadata could not be verified.",
+      502,
+    );
+    const { type, status } = account.data;
+    const trialAccountActive = type === "Trial" && status === "active";
+    const number = z.string().regex(/^\+[1-9]\d{7,14}$/);
+    const phoneSchema = z.object({
+      incoming_phone_numbers: z
+        .array(
+          z.object({
+            phone_number: number,
+            capabilities: z.object({ voice: z.boolean() }),
+          }),
+        )
+        .max(50),
+      next_page_uri: z.string().nullable().optional(),
+    });
+    const callerSchema = z.object({
+      outgoing_caller_ids: z.array(z.object({ phone_number: number })).max(50),
+      next_page_uri: z.string().nullable().optional(),
+    });
+    let phoneNumbers: { numberMasked: string; voiceCapable: boolean }[] = [];
+    let verifiedCallerIds: { numberMasked: string }[] = [];
+    let listsTruncated = false;
+    if (trialAccountActive) {
+      const [phoneData, callerData] = await Promise.all([
+        this.request("IncomingPhoneNumbers", {}, "?PageSize=50"),
+        this.request("OutgoingCallerIds", {}, "?PageSize=50"),
+      ]);
+      const phones = phoneSchema.safeParse(phoneData),
+        callers = callerSchema.safeParse(callerData);
+      requireThat(
+        phones.success && callers.success,
+        "twilio_response",
+        "Twilio number metadata could not be verified.",
+        502,
+      );
+      phoneNumbers = phones.data.incoming_phone_numbers.map((n) => ({
+        numberMasked: `Ending ${n.phone_number.slice(-4)}`,
+        voiceCapable: n.capabilities.voice,
+      }));
+      verifiedCallerIds = callers.data.outgoing_caller_ids.map((n) => ({
+        numberMasked: `Ending ${n.phone_number.slice(-4)}`,
+      }));
+      listsTruncated = Boolean(
+        phones.data.next_page_uri || callers.data.next_page_uri,
+      );
+    }
+    return {
+      checkedAt: new Date().toISOString(),
+      account: { type, status },
+      trialAccountActive,
+      resourcesChecked: trialAccountActive,
+      phoneNumbers,
+      verifiedCallerIds,
+      listsTruncated,
+      quotaConfirmed: false,
+      minutesRemaining: null,
+      liveEnabled: false,
+      canPlaceCalls: false,
+      approvedSpendCents: 0,
+      limitations: [
+        "An active trial is not proof of remaining free minutes or eligibility for a specific call. Check Twilio's Voice free-units tracker; nothing is purchased here.",
+        "The standard number APIs may not list resources managed by the newer Try out Voice flow. An empty list is not proof that your signup phone is unverified.",
+        "A verified caller ID is not proof of recipient consent, ownership by this app's operator, or permission for sales outreach.",
+        "Live dialing, conversational AI, voice cloning, provider stop/reconciliation and exact live-call authorization remain unfinished. This app cannot place a real call.",
+      ],
+    };
   }
   async verifyCaller(id: string, expectedNumber: string) {
     requireThat(
@@ -336,6 +436,10 @@ export class TwilioAdapter {
     };
   }
 }
+
+export type TwilioSetupReport = Awaited<
+  ReturnType<TwilioAdapter["inspectSetup"]>
+>;
 
 export function verifyElevenWebhook(
   raw: Buffer,

@@ -10,9 +10,18 @@ import { createOperator, login, session } from "./auth.js";
 import { OAuthProvider, SCOPES } from "./oauth.js";
 import { createMcp } from "./mcp.js";
 import { inspectAudio } from "./private-audio.js";
-import { ElevenLabsAdapter, latencyReport } from "./providers.js";
+import {
+  ElevenLabsAdapter,
+  TwilioAdapter,
+  latencyReport,
+} from "./providers.js";
 
-export function createApp(store: Store, origin: string, localSetup = true) {
+export function createApp(
+  store: Store,
+  origin: string,
+  localSetup = true,
+  providerFetch: typeof fetch = fetch,
+) {
   const app = express(),
     service = new VoiceService(store),
     oauth = new OAuthProvider(store, origin);
@@ -331,6 +340,41 @@ export function createApp(store: Store, origin: string, localSetup = true) {
     return r;
   });
   app.get("/api/latency", (_req, res) => res.json(latencyReport([])));
+  const twilioOwner = (owner: string) => {
+    const primary = store.db
+      .prepare("SELECT id FROM operators ORDER BY rowid LIMIT 1")
+      .get();
+    requireThat(
+      primary?.id === owner,
+      "provider_owner",
+      "Only the server's primary owner can inspect its Twilio account.",
+      403,
+    );
+  };
+  app.get("/api/twilio/setup", (_req, res) => {
+    twilioOwner(res.locals.owner);
+    res.json({
+      configured: Boolean(
+        process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN,
+      ),
+      liveEnabled: false,
+      approvedSpendCents: 0,
+    });
+  });
+  endpoint("twilio/inspect", async (owner, input) => {
+    twilioOwner(owner);
+    z.object({}).strict().parse(input);
+    requireThat(
+      process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN,
+      "twilio_setup",
+      "Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in the server's private environment and restart it. Never paste them into ChatGPT or this dashboard.",
+    );
+    return new TwilioAdapter(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN,
+      providerFetch,
+    ).inspectSetup();
+  });
   endpoint("provider/inspect", async (_o, _i) => {
     requireThat(
       process.env.ELEVENLABS_API_KEY &&
@@ -339,7 +383,10 @@ export function createApp(store: Store, origin: string, localSetup = true) {
       "provider_setup",
       "Read-only inspection requires server-side ElevenLabs key, voice ID and agent ID. No paid operation or upload is performed.",
     );
-    const p = new ElevenLabsAdapter(process.env.ELEVENLABS_API_KEY);
+    const p = new ElevenLabsAdapter(
+      process.env.ELEVENLABS_API_KEY,
+      providerFetch,
+    );
     return {
       voice: await p.voiceStatus(
         process.env.ELEVENLABS_VOICE_ID,
