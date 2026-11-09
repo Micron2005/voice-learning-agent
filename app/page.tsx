@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Audition } from "./audition";
 import { TwilioSetup } from "./twilio";
+import { ConversationLab } from "./conversation";
 
 type Row = { id: string; [key: string]: any };
 const sections = [
@@ -12,9 +13,10 @@ const sections = [
   "Permissions",
   "Phone setup",
   "Calls",
+  "Conversation lab",
   "MCP connection",
 ];
-const icons = ["◈", "◉", "≋", "▤", "◇", "⊕", "↗", "⌘"];
+const icons = ["◈", "◉", "≋", "▤", "◇", "⊕", "↗", "≋", "⌘"];
 const money = (n: number) => `$${(n / 100).toFixed(2)}`;
 const short = (id: string) => id?.slice(0, 8);
 
@@ -483,14 +485,18 @@ export default function Dashboard() {
           {tab === "Permissions" && <Permissions state={state} act={act} />}
           {tab === "Phone setup" && <TwilioSetup request={request} />}
           {tab === "Calls" && <Calls state={state} act={act} busy={busy} />}
+          {tab === "Conversation lab" && (
+            <ConversationLab state={state} request={request} />
+          )}
           {tab === "MCP connection" && (
             <section className="card">
               <p className="eyebrow">CHATGPT + CODEX</p>
               <h2>A real tool server. A separate voice session.</h2>
               <p>
-                ChatGPT or Codex prepares and inspects the call through MCP. The
-                ElevenAgents phone session handles live speech; the current chat
-                does not become a phone call.
+                The connected Codex chat decides what to say. The voice service
+                transports caller transcripts and exact replies; it has no
+                separate conversation model. The current fixture captures text
+                only, with no phone call or speech synthesis.
               </p>
               <div className="info">
                 <b>Current MCP endpoint</b>
@@ -519,6 +525,8 @@ export default function Dashboard() {
                   "call_prepare",
                   "call_get_draft",
                   "call_place_approved",
+                  "call_next_turn",
+                  "call_speak",
                   "call_status",
                   "call_summary",
                   "call_stop",
@@ -547,18 +555,11 @@ export default function Dashboard() {
                   <li key={s}>{s}</li>
                 ))}
               </ul>
-              <a
-                href="https://elevenlabs.io/pricing"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Review current ElevenLabs plans ↗
-              </a>
               <p className="muted">
-                Professional cloning requires eligible paid access.
-                Account-specific ElevenAgents, model and Twilio rates are not
-                verified; no estimated live cost is invented. Current allowed
-                cost is exactly $0.
+                Local voice enrollment and synthesis are not implemented yet. No
+                hosted voice provider is used. Hardware, model license, quality
+                and real-time speed must be verified before selection. Current
+                allowed external spend is exactly $0.
               </p>
             </section>
           )}
@@ -767,7 +768,7 @@ function Studio({ state, act, csrf, refresh, setError, busy }: any) {
                     act(
                       "voice/consent",
                       { voiceId, own: true, providerUpload: false },
-                      "Ownership consent recorded. Nothing has been uploaded to ElevenLabs.",
+                      "Ownership consent recorded. Your recordings remain private and local.",
                     );
                   }}
                 >
@@ -777,9 +778,9 @@ function Studio({ state, act, csrf, refresh, setError, busy }: any) {
                     recordings.
                   </label>
                   <p className="muted">
-                    Intended provider: ElevenLabs. Provider verification must be
-                    completed by you personally. Provider upload requires
-                    separate explicit authorization and eligible paid access.
+                    Private local storage only. No hosted voice provider is
+                    used. Voice-model selection and local enrollment still need
+                    validation; this consent does not authorize uploading audio.
                   </p>
                   <button>Save ownership consent</button>
                 </form>
@@ -835,12 +836,13 @@ function Studio({ state, act, csrf, refresh, setError, busy }: any) {
             <span>
               Heuristically usable material
               <br />
-              PVC guide: 30–180 minutes
+              Local quality check, not voice enrollment
             </span>
           </div>
           <p className="muted">
-            ElevenLabs recommends 30 minutes minimum and preferably 2–3 hours.
-            Heuristics cannot verify speaker identity or speech. Listen to every
+            Keep clean, varied recordings of your own speech. The selected local
+            speech model will determine enrollment requirements. These quality
+            heuristics cannot verify identity or prove a clone. Listen to every
             take.
           </p>
           <details>
@@ -851,13 +853,6 @@ function Studio({ state, act, csrf, refresh, setError, busy }: any) {
               ))}
             </ol>
           </details>
-          <a
-            href="https://elevenlabs.io/docs/eleven-creative/voices/voice-cloning/professional-voice-cloning"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Provider recording guidance ↗
-          </a>
         </section>
       </div>
       <section className="card">
@@ -1055,17 +1050,16 @@ function Quality({ state, act, request, busy }: any) {
           <label>
             Playback configuration
             <select value={preset} onChange={(e) => setPreset(e.target.value)}>
-              <option value="studio">Studio · Multilingual v2 candidate</option>
+              <option value="studio">Studio · mock calibration</option>
               <option value="conversation">
-                Conversation · Flash v2.5 candidate
+                Conversation · mock calibration
               </option>
             </select>
           </label>
         </div>
         <p className="muted">
-          Candidate models only. Exact PVC compatibility, quality and latency
-          must be checked against your account and actual ElevenAgents runtime;
-          no silent voice substitution.
+          No speech model selected. Local speech quality and latency must be
+          measured with your authorized voice; no silent voice substitution.
         </p>
         <label>
           Held-out sentence
@@ -1517,6 +1511,7 @@ function Calls({ state, act, busy }: any) {
               purpose: f.get("purpose"),
               duration: Number(f.get("duration")),
               costCapCents: 0,
+              conversation: f.get("conversation"),
             });
             if (d) {
               setDraft(d);
@@ -1598,6 +1593,15 @@ function Calls({ state, act, busy }: any) {
                 required
               />
             </label>
+            <label>
+              Conversation mode
+              <select name="conversation" defaultValue="timeline">
+                <option value="timeline">Original timeline simulation</option>
+                <option value="codex">
+                  Codex fixture · exact replies captured
+                </option>
+              </select>
+            </label>
           </div>
           <button className="primary" disabled={busy}>
             Prepare immutable draft
@@ -1622,9 +1626,20 @@ function Calls({ state, act, busy }: any) {
               <b>Limit:</b> {draft.snapshot.duration}s ·{" "}
               {money(draft.snapshot.costCapCents)}
               <br />
-              <b>Recording / transcript:</b> Off / off
+              <b>Recording:</b> Off · <b>Conversation:</b>{" "}
+              {draft.snapshot.conversation ?? "timeline"}
+              <br />
+              <b>Fictional text capture:</b>{" "}
+              {draft.snapshot.fixtureCapture
+                ? "Encrypted fixture only; no audio. 15-second reply deadline with fixed fallback."
+                : "Off"}
             </p>
             <blockquote>{draft.snapshot.knowledge.disclosure}</blockquote>
+            {draft.snapshot.fixtureCapture && (
+              <blockquote>
+                Fixed timeout fallback: {draft.snapshot.fallbackText}
+              </blockquote>
+            )}
             <details>
               <summary>Exact knowledge, voice settings and fingerprint</summary>
               <pre>{JSON.stringify(draft.snapshot, null, 2)}</pre>
@@ -1728,8 +1743,9 @@ function Calls({ state, act, busy }: any) {
               </button>
             </div>
             <small>
-              No recording, persistent transcript, real business feedback or
-              measured telephone latency.
+              {c.conversation === "codex"
+                ? "Encrypted fictional text capture only; no recording, synthesis, real business feedback or telephone latency."
+                : "No recording, persistent transcript, real business feedback or measured telephone latency."}
             </small>
           </div>
         ))}
@@ -1765,24 +1781,14 @@ function Calls({ state, act, busy }: any) {
 }
 
 function ProviderSettings({ state, act }: any) {
-  const [inspection, setInspection] = useState<any>(null);
   return (
     <section className="card">
-      <h2>Provider inspection & local retention</h2>
+      <h2>Local speech & retention</h2>
       <p>
-        Optional, read-only inspection of server-configured ElevenLabs voice and
-        agent IDs. This does not train, upload, generate speech, place calls or
-        verify a paid entitlement.
+        No hosted voice provider is connected. Your originals stay private.
+        Local model selection, enrollment and real speech previews are pending;
+        a quality report or mock tone is not a trained voice.
       </p>
-      <button
-        onClick={async () => {
-          const r = await act("provider/inspect", {});
-          if (r) setInspection(r);
-        }}
-      >
-        Inspect configured provider
-      </button>
-      {inspection && <pre>{JSON.stringify(inspection, null, 2)}</pre>}
       <form
         onSubmit={(e) => {
           e.preventDefault();

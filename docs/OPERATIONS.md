@@ -30,7 +30,9 @@ Deleting an original/preview is irreversible in the local active store and inval
 | Audio rejected/timed out | Use a supported audio file under 50 MB and 30 minutes; divide longer recordings into clips. |
 | Same-origin/CSRF error | Open exact `APP_URL`; sign in again; change both PORT and APP_URL together. |
 | Private preview link expired | Inspect preview again to obtain a fresh, two-minute bearer audio link. Do not share it publicly. |
-| Read-only provider inspection unavailable | No keys are required for dry run. Optional inspection needs the three server-side ElevenLabs values; it cannot enable calling or prove subscription eligibility. |
+| No speech from the fixture | It captures exact Codex text only. Local speech-model selection, enrollment and audio integration are pending; no hosted voice provider is used. |
+| Caller turn expired | Codex did not submit a reply within 15 seconds. The fixture captures the exact pre-approved fallback and ends; do not automatically restart it. |
+| `call_next_turn` / `call_speak` denied | Add `calls:listen` / `calls:speak` explicitly and re-authorize OAuth. Review, authorize and start a Codex-mode draft in the owner UI. Old read/prepare tokens are not upgraded. |
 | Twilio server credentials missing | Set `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` in the private server environment, restart, then reload Phone setup; never enter keys into chat or the dashboard. |
 | Twilio lists are empty | New trial resources may be managed separately by Try out Voice; check that screen and its free-units tracker without upgrading or purchasing anything. Do not assume verification failed or that credits exist. |
 | Twilio paid/inactive account | Only an active Trial account is eligible for this zero-spend setup path; connection success does not authorize use of a paid account. |

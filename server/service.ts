@@ -9,6 +9,11 @@ import {
   PROMPTS,
 } from "./content.js";
 import { PrivateAudio, demoWav } from "./private-audio.js";
+import {
+  ConversationBridge,
+  FALLBACK,
+  RESPONSE_WINDOW_MS,
+} from "./conversation.js";
 
 const phone = z.string().regex(/^\+[1-9]\d{7,14}$/);
 export const DraftInput = z
@@ -20,6 +25,7 @@ export const DraftInput = z
     purpose: z.enum(["owner-test", "requested-callback"]),
     duration: z.number().int().min(10).max(180),
     costCapCents: z.number().int().min(0).max(0),
+    conversation: z.enum(["timeline", "codex"]).default("timeline"),
   })
   .strict();
 export type DraftParams = z.infer<typeof DraftInput>;
@@ -29,8 +35,10 @@ export const fingerprint = (data: unknown) =>
 
 export class VoiceService {
   audio: PrivateAudio;
+  conversation: ConversationBridge;
   constructor(public store: Store) {
     this.audio = new PrivateAudio(store);
+    this.conversation = new ConversationBridge(this);
   }
   initialize(owner: string) {
     if (!this.store.list(owner, "budget").length)
@@ -82,10 +90,10 @@ export class VoiceService {
   liveBlockers() {
     return [
       "Live operations are locked in this milestone; no subscriptions, calls, uploads or provider changes are made.",
-      "Owner must approve paid plan and explicit usage budget (current cap $0).",
-      "Professional clone, personal provider verification and exact model compatibility remain unverified.",
+      "External phone usage requires a separately approved exact owner test and budget (current cap $0); no paid voice provider is planned.",
+      "Local speech model, authorized voice enrollment, hardware speed and quality remain unverified.",
       "Provider-backed caller-ID proof, approved test destination and product-fact confirmation required.",
-      "Review ElevenLabs and Twilio recording/transcript retention, signed events, stop/opt-out integration and current calling law.",
+      "Review local speech and Twilio retention, signed events, stop/opt-out integration and current calling law.",
       "Real Codex OAuth connection and authorized telephone latency/interruption test remain unverified.",
     ];
   }
@@ -130,6 +138,11 @@ export class VoiceService {
     providerUpload: boolean,
   ) {
     requireThat(
+      providerUpload === false,
+      "external_upload_disabled",
+      "External voice uploads are disabled. Ownership consent authorizes private local storage only.",
+    );
+    requireThat(
       own === true,
       "ownership",
       "Only your own voice may be enrolled.",
@@ -146,8 +159,8 @@ export class VoiceService {
       wording:
         "I am the speaker and own this voice. I authorize private local storage. Separate authorization is required before provider upload.",
       own,
-      providerUpload: providerUpload === true,
-      provider: "ElevenLabs",
+      providerUpload: false,
+      provider: "local-unselected",
       revoked: false,
     });
     v.consentId = c.id;
@@ -465,6 +478,10 @@ export class VoiceService {
       estimatedCents: 0,
       recording: false,
       persistentTranscript: false,
+      fixtureCapture: input.conversation === "codex",
+      responseWindowMs:
+        input.conversation === "codex" ? RESPONSE_WINDOW_MS : null,
+      fallbackText: input.conversation === "codex" ? FALLBACK : null,
     };
     const draft = this.store.add(owner, "draft", {
       input,
@@ -582,6 +599,7 @@ export class VoiceService {
         state: "queued",
         mode: "simulation",
         providerId: `sim_${d.id}`,
+        conversation: d.input.conversation ?? "timeline",
         number: d.input.recipient,
         duration: d.input.duration,
         timeline: [{ state: "queued", at: Date.now() }],
@@ -678,6 +696,7 @@ export class VoiceService {
       id: string;
     }[];
     for (const { id: owner } of owners) {
+      this.conversation.tick(owner);
       const h = this.store.list(owner, "heartbeat")[0];
       if (h) {
         h.at = Date.now();

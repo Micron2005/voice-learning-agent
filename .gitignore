@@ -7,3 +7,4 @@ data/
 next-env.d.ts
 *.tsbuildinfo
 *.log
+codex-proof-evidence.json

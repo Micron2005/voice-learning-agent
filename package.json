@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint app server tests",
     "test": "tsx --test tests/*.test.ts",
-    "mcp:stdio": "tsx server/stdio.ts"
+    "mcp:stdio": "tsx server/stdio.ts",
+    "proof:codex": "tsx tests/codex-proof.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

@@ -44,13 +44,13 @@ export const HELD_OUT = [
 ];
 export const PRESETS = {
   studio: {
-    model: "eleven_multilingual_v2",
+    model: "local-unselected",
     stability: 0.5,
     similarity: 0.75,
     speed: 1,
   },
   conversation: {
-    model: "eleven_flash_v2_5",
+    model: "local-unselected",
     stability: 0.5,
     similarity: 0.75,
     speed: 1,

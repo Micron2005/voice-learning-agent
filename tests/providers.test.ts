@@ -1,11 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
 import {
-  ElevenLabsAdapter,
   TwilioAdapter,
   paidPreflight,
-  verifyElevenWebhook,
   acceptProviderEvent,
   latencyReport,
   type LivePermit,
@@ -45,81 +42,6 @@ test("billable operations require owner approval, access checks and positive unr
     { reservedCents: NaN },
   ])
     assert.throws(() => paidPreflight({ ...permit, ...diff }));
-});
-test("provider metadata is model-specific; stored ID does not mean clone ready", async () => {
-  const p = new ElevenLabsAdapter("test-key-not-secret", async () =>
-    Response.json({
-      voice_id: "voice_1",
-      is_owner: true,
-      category: "professional",
-      fine_tuning: { state: { eleven_multilingual_v2: "fine_tuned" } },
-    }),
-  );
-  assert.equal(
-    (await p.voiceStatus("voice_1", "eleven_flash_v2_5")).readiness,
-    "not_ready",
-  );
-  assert.equal(
-    (await p.voiceStatus("voice_1", "eleven_multilingual_v2")).compatible,
-    true,
-  );
-});
-test("provider timeout never retries a possibly accepted call", async () => {
-  let requests = 0;
-  const p = new ElevenLabsAdapter("test-key-not-secret", async () => {
-    requests++;
-    throw new Error("timeout");
-  });
-  await assert.rejects(
-    () => p.createCall("agent_1", "phone_1", "+12025550123", permit),
-    /Do not repeat/,
-  );
-  assert.equal(requests, 1);
-});
-test("native outbound request disables both recording flags and queued is not connected", async () => {
-  const p = new ElevenLabsAdapter("test-key-not-secret", async (url, init) => {
-    assert.equal(
-      String(url),
-      "https://api.elevenlabs.io/v1/convai/twilio/outbound-call",
-    );
-    const body = JSON.parse(init!.body as string);
-    assert.equal(body.call_recording_enabled, false);
-    assert.equal(
-      body.telephony_call_config.twilio_call_recording_enabled,
-      false,
-    );
-    return Response.json({
-      success: true,
-      conversation_id: "conv_1",
-      callSid: `CA${"1".repeat(32)}`,
-    });
-  });
-  const c = await p.createCall("agent_1", "phone_1", "+12025550123", permit);
-  assert.equal(c.state, "queued");
-  assert.match(c.evidence, /not a connected/);
-  await assert.rejects(
-    () =>
-      p.createCall("agent_1", "phone_1", "+12025550123", {
-        ...permit,
-        suppressed: true,
-      }),
-    /unsuppressed/,
-  );
-});
-test("provider errors are actionable and never leak credentials or raw response", async () => {
-  const p = new ElevenLabsAdapter(
-    "test-secret-marker",
-    async () =>
-      new Response("internal credential test-secret-marker", { status: 403 }),
-  );
-  await assert.rejects(
-    () => p.voiceStatus("voice_1", "model"),
-    (e: any) => {
-      assert.match(e.message, /HTTP 403/);
-      assert.ok(!e.message.includes("test-secret-marker"));
-      return true;
-    },
-  );
 });
 test("verified external caller IDs are outbound-only; termination uses the real CallSid", async () => {
   const callerSid = `PN${"1".repeat(32)}`,
@@ -296,39 +218,6 @@ test("Twilio inspection failures are redacted and never automatically retried", 
     );
     assert.equal(requests, outcome === "bad-numbers" ? 3 : 1);
   }
-});
-test("webhook HMAC checks raw bytes, timestamp tolerance, and rotated signatures", () => {
-  const raw = Buffer.from('{"type":"test"}'),
-    timestamp = String(Math.floor(Date.now() / 1000));
-  const signature = createHmac("sha256", "test-signing-key")
-    .update(`${timestamp}.`)
-    .update(raw)
-    .digest("hex");
-  assert.ok(
-    verifyElevenWebhook(
-      raw,
-      `t=${timestamp},v0=${"0".repeat(64)},v0=${signature}`,
-      "test-signing-key",
-    ),
-  );
-  assert.ok(
-    !verifyElevenWebhook(
-      Buffer.from("{}"),
-      `t=${timestamp},v0=${signature}`,
-      "test-signing-key",
-    ),
-  );
-  assert.ok(
-    !verifyElevenWebhook(
-      raw,
-      `t=${timestamp},v0=${signature}`,
-      "test-signing-key",
-      Date.now() + 301_000,
-    ),
-  );
-  assert.ok(
-    !verifyElevenWebhook(raw, `t=${timestamp},v0=bad`, "test-signing-key"),
-  );
 });
 test("provider events deduplicate, ignore stale events and cannot mutate a simulated call", () => {
   const dir = mkdtempSync(join(tmpdir(), "voice-events-")),

@@ -64,7 +64,7 @@ test(
         return JSON.parse(stdout);
       };
       const listed = await run(["--method", "tools/list", "--strict"]);
-      assert.equal(listed.tools.length, 12);
+      assert.equal(listed.tools.length, 14);
       assert.equal(
         listed.tools.find((t: any) => t.name === "voice_preview").annotations
           .readOnlyHint,

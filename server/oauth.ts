@@ -24,6 +24,8 @@ export const SCOPES = [
   "calls:prepare",
   "calls:place",
   "calls:stop",
+  "calls:listen",
+  "calls:speak",
 ];
 export class OAuthProvider implements OAuthServerProvider {
   resource: string;
