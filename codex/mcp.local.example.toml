@@ -1,0 +1,12 @@
+# Codex CLI local MCP configuration. Replace all paths and the owner ID.
+[mcp_servers.vultrix_voice]
+command = "node"
+args = ["--import", "file:///absolute/project/node_modules/tsx/dist/loader.mjs", "/absolute/project/server/stdio.ts"]
+tool_timeout_sec = 30
+
+[mcp_servers.vultrix_voice.env]
+VOICE_DATA_DIR = "/absolute/project/data"
+VOICE_OPERATOR_ID = "REPLACE_WITH_LOCAL_OWNER_ID"
+VOICE_MCP_SCOPES = "voice:read calls:read calls:listen calls:speak calls:stop"
+APP_URL = "http://localhost:3410"
+DOTENV_CONFIG_QUIET = "true"

@@ -59,9 +59,15 @@ Active Trial means the account type/status was verified, **not** that free quota
 
 ## MCP connection
 
-See [the complete ChatGPT/Codex guide](docs/MCP.md) and [local example configuration](codex/mcp.local.example.json). This server uses the official MCP SDK, Streamable HTTP plus OAuth 2.1/S256 PKCE, and a trusted-local stdio entry point. There is no tool that can create operator authorization grants.
+See [the complete ChatGPT/Codex guide](docs/MCP.md), [Codex CLI TOML configuration](codex/mcp.local.example.toml) and [generic MCP JSON configuration](codex/mcp.local.example.json). This server uses the official MCP SDK, Streamable HTTP plus OAuth 2.1/S256 PKCE, and a trusted-local stdio entry point. There is no tool that can create operator authorization grants.
 
-**ChatGPT does not turn this chat into a phone call.** Its tools control a separate agent/session. A cloud ChatGPT connection needs a reachable HTTPS deployment, compatible account/workspace permissions, and successful owner OAuth approval. Localhost on this computer is not reachable by ChatGPT's cloud. No real ChatGPT/Codex account connection has been verified here.
+**Codex chooses what to say; the voice service must not run another conversation model.** A Codex-mode simulation now supports `call_next_turn` and `call_speak`: the client receives an untrusted caller transcript and submits its exact reply for capture. The service does not rewrite, expand or generate the reply. The original timeline simulation remains the default.
+
+In **Calls**, select **Codex fixture**, prepare/review/authorize the exact $0 draft and start it. In **Conversation lab**, select the connected fixture and send either sample utterance or your own fictional text. A client with explicit `calls:listen` and `calls:speak` scopes can read and answer each turn. The lab shows the exact submitted text, SHA-256 and caller-turn-to-capture timing. It does **not** synthesize audio or measure telephone latency. A newer utterance interrupts an unanswered turn. After 15 seconds without a reply, the fixture captures the fixed fallback reviewed in the draft and ends. Stop, kill switch, suppression, consent and voice revocation continue to apply. Fixture text is encrypted locally and removed by the audio-retention worker; no real conversation is recorded.
+
+`npm run proof:codex` is a separate, manual acceptance harness for an **actual Codex CLI** session (tested CLI interface: 0.167.0). It requires a ChatGPT-backed login, refuses API-key billing, grants only a disposable fictional fixture, injects two different utterances and checks both exact `call_speak` arguments against bridge capture. It writes ignored `codex-proof-evidence.json` **only on success**. No model reply is scripted. This is not included in `npm test`, and a fixture/MCP Inspector pass is not an actual Codex acceptance pass. Until that harness succeeds or equivalent actual-client evidence is collected, the conversation-loop acceptance remains open.
+
+No ElevenLabs or ElevenAgents path remains. Local voice-model selection, real enrollment, speech previews, streaming STT/TTS and Twilio audio are separate pending milestones; see [activation requirements](docs/ACTIVATION.md). No promise of commercial-provider likeness or real-time speed is made. A cloud ChatGPT connection also needs an approved reachable HTTPS deployment, compatible account permissions and owner OAuth; localhost is not reachable from ChatGPT's cloud.
 
 ## Checks
 

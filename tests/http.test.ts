@@ -174,7 +174,7 @@ test("HTTP authentication, CSRF, OAuth PKCE discovery and real MCP transport", a
       }),
     );
     const tools = await mcp.listTools();
-    assert.equal(tools.tools.length, 12);
+    assert.equal(tools.tools.length, 14);
     assert.equal(
       tools.tools.some((x) => /authorize|grant/.test(x.name)),
       false,

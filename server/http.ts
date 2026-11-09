@@ -10,11 +10,7 @@ import { createOperator, login, session } from "./auth.js";
 import { OAuthProvider, SCOPES } from "./oauth.js";
 import { createMcp } from "./mcp.js";
 import { inspectAudio } from "./private-audio.js";
-import {
-  ElevenLabsAdapter,
-  TwilioAdapter,
-  latencyReport,
-} from "./providers.js";
+import { TwilioAdapter, latencyReport } from "./providers.js";
 
 export function createApp(
   store: Store,
@@ -237,6 +233,21 @@ export function createApp(
     return service.place(o, p.draftId, p.idempotencyKey);
   });
   endpoint("call/stop", (o, i) => service.stop(o, i.callId));
+  endpoint("fixture/utterance", (o, i) => {
+    const data = z
+      .object({ callId: z.string().uuid(), text: z.string() })
+      .strict()
+      .parse(i);
+    return service.conversation.injectFixture(o, data.callId, data.text);
+  });
+  app.get("/api/fixture/:callId", (req, res) => {
+    res.json(
+      service.conversation.inspectFixture(
+        res.locals.owner,
+        z.string().uuid().parse(req.params.callId),
+      ),
+    );
+  });
   endpoint("call/optout", (o, i) => service.stop(o, i.callId, true));
   endpoint("kill", (o, i) => service.kill(o, z.boolean().parse(i.enabled)));
   endpoint("asset/delete", (o, i) => {
@@ -374,27 +385,6 @@ export function createApp(
       process.env.TWILIO_AUTH_TOKEN,
       providerFetch,
     ).inspectSetup();
-  });
-  endpoint("provider/inspect", async (_o, _i) => {
-    requireThat(
-      process.env.ELEVENLABS_API_KEY &&
-        process.env.ELEVENLABS_VOICE_ID &&
-        process.env.ELEVENLABS_AGENT_ID,
-      "provider_setup",
-      "Read-only inspection requires server-side ElevenLabs key, voice ID and agent ID. No paid operation or upload is performed.",
-    );
-    const p = new ElevenLabsAdapter(
-      process.env.ELEVENLABS_API_KEY,
-      providerFetch,
-    );
-    return {
-      voice: await p.voiceStatus(
-        process.env.ELEVENLABS_VOICE_ID,
-        "eleven_flash_v2_5",
-      ),
-      agent: await p.agentStatus(process.env.ELEVENLABS_AGENT_ID),
-      liveEnabled: false,
-    };
   });
   app.use(
     mcpAuthRouter({
